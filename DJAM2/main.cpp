@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -22,6 +23,7 @@
 
 #include "GameHandler.h"
 #include "Callbacks.h"
+#include "RenderObject.h"
 
 #define MAX_FRAMERATE 144
 
@@ -160,19 +162,17 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	VkImage texImage;
+	/*VkImage texImage;
 	VkDeviceMemory texImageMemory;
 	VkImageView texImageView;
+	VkImage texImage2;
+	VkDeviceMemory texImageMemory2;
+	VkImageView texImageView2;*/
+	Texture* textures;
 	VkSampler texSampler;
 
 	VkDescriptorPool descriptorPool;
-	VkDescriptorSet* descriptorSets;
-	VkDescriptorSet* descriptorSetsTwo;
-	VkBuffer* uniformBuffers;
-	VkBuffer* uniformBuffers2;
-	VkDeviceMemory* uniformBuffersMemory;
-	VkDeviceMemory* uniformBuffersMemory2;
-	int uniformBufferCount;
+	RenderObject* renderObjects;
 
 	size_t currentFrame = 0;
 
@@ -216,14 +216,10 @@ private:
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
-		createTextureImage();
-		createTextureImageView();
-		createTextureSampler();
+		createTextures();
 		createVertexBuffer();
 		createIndexBuffer();
-		createUniformBuffers();
-		createDescriptorPool();
-		createDescriptorSets();
+		createDescriptors();
 		createCommandBuffers();
 		createSemaphores();
 	}
@@ -265,8 +261,11 @@ private:
 			return;
 		}
 
-		updateUniformBuffer(imageIndex);
-		updateUniformBuffer2(imageIndex);
+		//updateUniformBuffer(imageIndex);
+		//updateUniformBuffer2(imageIndex);
+		renderObjects[0].updateMatrix(device, glm::identity<mat4>(), imageIndex);
+		renderObjects[1].updateMatrix(device, glm::translate(mat4(1.0f), vec3(gameHandler->getOffsetX(), gameHandler->getOffsetY(), 0.0f)), imageIndex);
+
 
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -311,9 +310,9 @@ private:
 
 		vkDestroySampler(device, texSampler, NULL);
 
-		vkDestroyImageView(device, texImageView, NULL);
-		vkDestroyImage(device, texImage, NULL);
-		vkFreeMemory(device, texImageMemory, NULL);
+		for (int i = 0; i < 2; ++i) {
+			textures[i].cleanup(device);
+		}
 
 		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, NULL);
 
@@ -550,10 +549,8 @@ private:
 
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 
-		for (int i = 0; i < uniformBufferCount; ++i) {
-			vkDestroyBuffer(device, uniformBuffers[i], NULL);
-			vkFreeMemory(device, uniformBuffersMemory[i], NULL);
-		}
+		renderObjects[0].cleanupVKObjects(device, swapChainImages.size());
+		renderObjects[1].cleanupVKObjects(device, swapChainImages.size());
 
 		vkDestroyDescriptorPool(device, descriptorPool, NULL);
 	}
@@ -576,9 +573,7 @@ private:
 		createRenderPass();
 		createGraphicsPipeline();
 		createFramebuffers();
-		createUniformBuffers();
-		createDescriptorPool();
-		createDescriptorSets();
+		createDescriptors();
 		createCommandBuffers();
 	}
 
@@ -726,7 +721,13 @@ private:
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
 		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.blendEnable = VK_TRUE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 		VkPipelineColorBlendStateCreateInfo colorBlending = {};
 		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -835,10 +836,10 @@ private:
 			vkCmdBindVertexBuffers(framebufferCommandbuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(framebufferCommandbuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-			vkCmdBindDescriptorSets(framebufferCommandbuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, NULL);
+			renderObjects[0].bindCmd(framebufferCommandbuffers[i], pipelineLayout, i);
 			vkCmdDrawIndexed(framebufferCommandbuffers[i], indexCount, 1, 0, 0, 0);
 
-			vkCmdBindDescriptorSets(framebufferCommandbuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSetsTwo[i], 0, NULL);
+			renderObjects[1].bindCmd(framebufferCommandbuffers[i], pipelineLayout, i);
 			vkCmdDrawIndexed(framebufferCommandbuffers[i], indexCount, 1, 0, 0, 0);
 
 			vkCmdEndRenderPass(framebufferCommandbuffers[i]);
@@ -905,130 +906,44 @@ private:
 		vkFreeMemory(device, stagingBufferMemory, NULL);
 	}
 
-	void createUniformBuffers() {
-		VkDeviceSize bufferSize = sizeof(mat4);
-		uniformBufferCount = swapChainImages.size();
-		uniformBuffers = new VkBuffer[uniformBufferCount];
-		uniformBuffersMemory = new VkDeviceMemory[uniformBufferCount];
-
-		for (int i = 0; i < uniformBufferCount; ++i) {
-			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-		}
-
-		VkDeviceSize bufferSize2 = sizeof(mat4);
-		uniformBuffers2 = new VkBuffer[uniformBufferCount];
-		uniformBuffersMemory2 = new VkDeviceMemory[uniformBufferCount];
-
-		for (int i = 0; i < uniformBufferCount; ++i) {
-			createBuffer(bufferSize2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers2[i], uniformBuffersMemory2[i]);
-		}
-	}
-
-	void createDescriptorPool() {
+	void createDescriptorPool(int renderObjectCount) {
 		VkDescriptorPoolSize* poolSize = new VkDescriptorPoolSize[2];
 		poolSize[0] = {};
 		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize[0].descriptorCount = uniformBufferCount * 2;
+		poolSize[0].descriptorCount = swapChainImages.size() * renderObjectCount;
 		poolSize[1] = {};
 		poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSize[1].descriptorCount = uniformBufferCount * 2;
+		poolSize[1].descriptorCount = swapChainImages.size() * renderObjectCount;
 
 
 		VkDescriptorPoolCreateInfo poolinfo = {};
 		poolinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolinfo.poolSizeCount = 2;
 		poolinfo.pPoolSizes = poolSize;
-		poolinfo.maxSets = uniformBufferCount * 2;
-
+		poolinfo.maxSets = swapChainImages.size() * renderObjectCount;
+		
 		vkCreateDescriptorPool(device, &poolinfo, NULL, &descriptorPool);
 	}
 
-	void createDescriptorSets() {
-		VkDescriptorSetLayout* setLayouts = new VkDescriptorSetLayout[uniformBufferCount];
-		for (int i = 0; i < uniformBufferCount; ++i) {
-			setLayouts[i] = descriptorSetLayout;
-		}
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = descriptorPool;
-		allocInfo.descriptorSetCount = uniformBufferCount;
-		allocInfo.pSetLayouts = setLayouts;
-
-		descriptorSets = new VkDescriptorSet[uniformBufferCount];
-		descriptorSetsTwo = new VkDescriptorSet[uniformBufferCount];
-		vkAllocateDescriptorSets(device, &allocInfo, descriptorSets);
-		vkAllocateDescriptorSets(device, &allocInfo, descriptorSetsTwo);
-
-		for (int i = 0; i < uniformBufferCount; ++i) {
-			VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(mat4);
-
-			VkDescriptorImageInfo imageInfo = {};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = texImageView;
-			imageInfo.sampler = texSampler;
-			
-			VkWriteDescriptorSet* descriptorWrites = new VkWriteDescriptorSet[2];
-			descriptorWrites[0] = {};
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = descriptorSets[i];
-			descriptorWrites[0].dstBinding = 0;//pos in shader?
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-			descriptorWrites[1] = {};
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = descriptorSets[i];
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
-			
-			vkUpdateDescriptorSets(device, 2, descriptorWrites, 0, NULL);
-
-
-			VkDescriptorBufferInfo bufferInfo2 = {};
-			bufferInfo2.buffer = uniformBuffers2[i];
-			bufferInfo2.offset = 0;
-			bufferInfo2.range = sizeof(mat4);
-
-			VkDescriptorImageInfo imageInfo2 = {};
-			imageInfo2.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo2.imageView = texImageView;
-			imageInfo2.sampler = texSampler;
-
-			VkWriteDescriptorSet* descriptorWrites2 = new VkWriteDescriptorSet[2];
-			descriptorWrites2[0] = {};
-			descriptorWrites2[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites2[0].dstSet = descriptorSetsTwo[i];
-			descriptorWrites2[0].dstBinding = 0;//pos in shader?
-			descriptorWrites2[0].dstArrayElement = 0;
-			descriptorWrites2[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites2[0].descriptorCount = 1;
-			descriptorWrites2[0].pBufferInfo = &bufferInfo2;
-
-			descriptorWrites2[1] = {};
-			descriptorWrites2[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites2[1].dstSet = descriptorSetsTwo[i];
-			descriptorWrites2[1].dstBinding = 1;
-			descriptorWrites2[1].dstArrayElement = 0;
-			descriptorWrites2[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites2[1].descriptorCount = 1;
-			descriptorWrites2[1].pImageInfo = &imageInfo2;
-
-			vkUpdateDescriptorSets(device, 2, descriptorWrites2, 0, NULL);
-		}
+	void createTextures() {
+		textures = new Texture[2];
+		textures[0] = getTexture("res/asteroid01.png");
+		textures[1] = getTexture("res/ship_off.png");
+		createTextureSampler();
 	}
 
-	void createTextureImage() {
+	Texture getTexture(const char* path) {
+		VkImage image;
+		VkDeviceMemory memory;
+		createTextureImage(path, image, memory);
+		VkImageView view = createImageView(image, VK_FORMAT_R8G8B8A8_UNORM);
+		return Texture(image, memory, view);
+	}
+
+	void createTextureImage(const char* path, VkImage& image, VkDeviceMemory& memory) {
 		int texWidth, texHeight;
 		int texChannels;
-		stbi_uc* pixels = stbi_load("res/tex.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);//unsigned chars
+		stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);//unsigned chars
 		VkDeviceSize imageSize = texWidth * texHeight * 4;
 
 		VkBuffer stagingBuffer;
@@ -1041,19 +956,19 @@ private:
 
 		stbi_image_free(pixels);
 
-		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texImage, texImageMemory);
-		transitionImageLayout(texImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		copyBufferToImage(stagingBuffer, texImage, texWidth, texHeight);
+		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory);
+		transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		copyBufferToImage(stagingBuffer, image, texWidth, texHeight);
 
-		transitionImageLayout(texImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		
 		vkDestroyBuffer(device, stagingBuffer, NULL);
 		vkFreeMemory(device, stagingMemory, NULL);
 	}
 
-	void createTextureImageView() {
+	/*void createTextureImageView() {
 		texImageView = createImageView(texImage, VK_FORMAT_R8G8B8A8_UNORM);
-	}
+	}*/
 
 	void createTextureSampler() {
 		VkSamplerCreateInfo samplerInfo = {};
@@ -1075,6 +990,25 @@ private:
 		samplerInfo.maxLod = 0.0f;
 
 		vkCreateSampler(device, &samplerInfo, NULL, &texSampler);
+	}
+
+	void createDescriptors() {
+		createDescriptorPool(2);
+
+		ROCreateInfo ROInfo = {};
+		ROInfo.frameBufferCount = swapChainImages.size();
+		ROInfo.logicalDevice = &device;
+		ROInfo.physicalDevice = &physicalDevice;
+		ROInfo.descriptorPool = &descriptorPool;
+		ROInfo.descriptorSetLayout = &descriptorSetLayout;
+		ROInfo.texture = &textures[0];
+		ROInfo.imageSampler = &texSampler;
+
+		renderObjects = new RenderObject[2];
+		renderObjects[0] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[1];
+		renderObjects[1] = RenderObject(&ROInfo);
 	}
 
 	VkImageView createImageView(VkImage image, VkFormat format) {
@@ -1224,22 +1158,6 @@ private:
 		vkAllocateMemory(device, &allocInfo, NULL, &imageMemory);
 
 		vkBindImageMemory(device, image, imageMemory, 0);
-	}
-
-	void updateUniformBuffer(uint32_t currentImage) {
-		mat4 identity = glm::identity<mat4>();
-		updateUniformBuffer(uniformBuffersMemory[currentImage], glm::translate(mat4(1.0f), vec3(gameHandler->getOffsetX(), gameHandler->getOffsetY(), 0.0f)));
-	}
-
-	void updateUniformBuffer2(uint32_t currentImage) {
-		updateUniformBuffer(uniformBuffersMemory2[currentImage], glm::identity<mat4>());
-	}
-	
-	void updateUniformBuffer(VkDeviceMemory& bufferMemory, mat4 value) {
-		void* data;
-		vkMapMemory(device, bufferMemory, 0, sizeof(mat4), 0, &data);
-		memcpy(data, &value, sizeof(mat4));
-		vkUnmapMemory(device, bufferMemory);
 	}
 
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {

@@ -145,14 +145,27 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Callbacks.cpp" />
-    <ClCompile Include="DescriptorSet.cpp" />
+    <ClCompile Include="RenderObject.cpp" />
     <ClCompile Include="GameHandler.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Callbacks.h" />
-    <ClInclude Include="DescriptorSet.h" />
+    <ClInclude Include="RenderObject.h" />
     <ClInclude Include="GameHandler.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="Util.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\asteroid01.png" />
+    <Image Include="res\ship_dampened.png" />
+    <Image Include="res\ship_off.png" />
+    <Image Include="res\ship_on.png" />
+    <Image Include="res\stars.png" />
+    <Image Include="res\tex.png" />
+    <Image Include="res\vspirit.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,4 +1,7 @@
-#include "DescriptorSet.h"
+#include "RenderObject.h"
+
+RenderObject::RenderObject() {
+}
 
 RenderObject::RenderObject(ROCreateInfo* createInfo) {
 	VkDeviceSize bufferSize = sizeof(mat4);
@@ -26,23 +29,21 @@ RenderObject::RenderObject(ROCreateInfo* createInfo) {
 
 		vkBindBufferMemory(*createInfo->logicalDevice, buffers[i], memory[i], 0);
 	}
-}
 
-void RenderObject::finishSetup(ROFinishCreateInfo* finishInfo) {
-	VkDescriptorSetLayout* setLayouts = new VkDescriptorSetLayout[finishInfo->frameBufferCount];
-	for (int i = 0; i < finishInfo->frameBufferCount; ++i) {
-		setLayouts[i] = *finishInfo->descriptorSetLayout;
+	VkDescriptorSetLayout* setLayouts = new VkDescriptorSetLayout[createInfo->frameBufferCount];
+	for (int i = 0; i < createInfo->frameBufferCount; ++i) {
+		setLayouts[i] = *createInfo->descriptorSetLayout;
 	}
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = *finishInfo->descriptorPool;
-	allocInfo.descriptorSetCount = finishInfo->frameBufferCount;
+	allocInfo.descriptorPool = *createInfo->descriptorPool;
+	allocInfo.descriptorSetCount = createInfo->frameBufferCount;
 	allocInfo.pSetLayouts = setLayouts;
 
-	descriptorSets = new VkDescriptorSet[finishInfo->frameBufferCount];
-	vkAllocateDescriptorSets(*finishInfo->logicalDevice, &allocInfo, descriptorSets);
+	descriptorSets = new VkDescriptorSet[createInfo->frameBufferCount];
+	vkAllocateDescriptorSets(*createInfo->logicalDevice, &allocInfo, descriptorSets);
 
-	for (int i = 0; i < finishInfo->frameBufferCount; ++i) {
+	for (int i = 0; i < createInfo->frameBufferCount; ++i) {
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = buffers[i];
 		bufferInfo.offset = 0;
@@ -50,8 +51,8 @@ void RenderObject::finishSetup(ROFinishCreateInfo* finishInfo) {
 
 		VkDescriptorImageInfo imageInfo = {};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = *finishInfo->imageView;
-		imageInfo.sampler = *finishInfo->imageSampler;
+		imageInfo.imageView = *createInfo->texture->getView();
+		imageInfo.sampler = *createInfo->imageSampler;
 
 		VkWriteDescriptorSet* descriptorWrites = new VkWriteDescriptorSet[2];
 		descriptorWrites[0] = {};
@@ -72,6 +73,24 @@ void RenderObject::finishSetup(ROFinishCreateInfo* finishInfo) {
 		descriptorWrites[1].descriptorCount = 1;
 		descriptorWrites[1].pImageInfo = &imageInfo;
 
-		vkUpdateDescriptorSets(*finishInfo->logicalDevice, 2, descriptorWrites, 0, NULL);
+		vkUpdateDescriptorSets(*createInfo->logicalDevice, 2, descriptorWrites, 0, NULL);
+	}
+}
+
+void RenderObject::updateMatrix(VkDevice logDevice, mat4 newVal, int frameBufferIndex) {
+	void* data;
+	vkMapMemory(logDevice, memory[frameBufferIndex], 0, sizeof(mat4), 0, &data);
+	memcpy(data, &newVal, sizeof(mat4));
+	vkUnmapMemory(logDevice, memory[frameBufferIndex]);
+}
+
+void RenderObject::bindCmd(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int framebufferIndex) {
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[framebufferIndex], 0, NULL);
+}
+
+void RenderObject::cleanupVKObjects(VkDevice& logDevice, int framebufferCount) {
+	for (int i = 0; i < framebufferCount; ++i) {
+		vkDestroyBuffer(logDevice, buffers[i], NULL);
+		vkFreeMemory(logDevice, memory[i], NULL);
 	}
 }

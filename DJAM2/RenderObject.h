@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 
 #include "Util.h"
+#include "Texture.h"
 
 using namespace glm;
 
@@ -12,21 +13,19 @@ struct ROCreateInfo {
 	uint32_t frameBufferCount;
 	VkDevice* logicalDevice;
 	VkPhysicalDevice* physicalDevice;
-};
-struct ROFinishCreateInfo {
-	uint32_t frameBufferCount;
-	VkDevice* logicalDevice;
 	VkDescriptorPool* descriptorPool;
 	VkDescriptorSetLayout* descriptorSetLayout;
-	VkImageView* imageView;
+	Texture* texture;
 	VkSampler* imageSampler;
 };
 
 class RenderObject {
 public:
+	RenderObject();
 	RenderObject(ROCreateInfo* createInfo);
-	void finishSetup(ROFinishCreateInfo* finishInfo);
-	void cleanupVKObjects();
+	void updateMatrix(VkDevice logDevice, mat4 newVal, int frameBufferIndex);
+	void bindCmd(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int framebufferIndex);
+	void cleanupVKObjects(VkDevice& logDevice, int framebufferCount);
 private: 
 	VkDescriptorSet* descriptorSets;
 	VkBuffer* buffers;

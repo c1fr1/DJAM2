@@ -28,7 +28,13 @@
     <ClCompile Include="Callbacks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DescriptorSet.cpp">
+    <ClCompile Include="Util.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -39,8 +45,37 @@
     <ClInclude Include="Callbacks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DescriptorSet.h">
+    <ClInclude Include="Util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RenderObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\tex.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\vspirit.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\asteroid01.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\ship_dampened.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\ship_off.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\ship_on.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\stars.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
