@@ -25,12 +25,12 @@
 #include "Callbacks.h"
 #include "RenderObject.h"
 
-#define MAX_FRAMERATE 144
+#define MAX_FRAMERATE 240
 
 using namespace glm;
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
+const int WIDTH = 1920;
+const int HEIGHT = 1280;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -124,6 +124,8 @@ public:
 	}
 
 private:
+	mat4 perspective;
+
 	GameHandler* gameHandler;
 
 	GLFWwindow* window;
@@ -222,11 +224,11 @@ private:
 		createDescriptors();
 		createCommandBuffers();
 		createSemaphores();
+		gameHandler->setPerspective(&perspective);
 	}
 
 	void mainLoop() {
-		static float minDuration = 1.0f / (float)MAX_FRAMERATE;
-		std::cout << "minFrameDuration " << std::chrono::duration<float, std::chrono::seconds::period>(minDuration).count() << std::endl;
+		static float minDuration = 1.0f / (float) MAX_FRAMERATE;
 
 		float timeA = glfwGetTime();
 		float timeB = glfwGetTime();
@@ -249,6 +251,38 @@ private:
 		vkDeviceWaitIdle(device);
 	}
 
+	void updateDescriptorSets(int imageIndex) {
+		for (int i = 0; i < 9; ++i) {
+			renderObjects[i].updateMatrix(device, gameHandler->getBackgroundOffset(i), imageIndex);
+		}
+
+		if (keyDown(GLFW_KEY_S) || keyDown(GLFW_KEY_A) || keyDown(GLFW_KEY_D)) {
+			if (keyDown(GLFW_KEY_W)) {
+				renderObjects[9].updateMatrix(device, mat4(), imageIndex);
+				renderObjects[10].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
+				renderObjects[11].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
+			}
+			else {
+				renderObjects[9].updateMatrix(device, mat4(), imageIndex);
+				renderObjects[10].updateMatrix(device, mat4(), imageIndex);
+				renderObjects[11].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
+			}
+		}
+		else if (keyDown(GLFW_KEY_W)) {
+			renderObjects[9].updateMatrix(device, mat4(), imageIndex);
+			renderObjects[10].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
+			renderObjects[11].updateMatrix(device, mat4(), imageIndex);
+		}
+		else {
+			renderObjects[9].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
+			renderObjects[10].updateMatrix(device, mat4(), imageIndex);
+			renderObjects[11].updateMatrix(device, mat4(), imageIndex);
+		}
+		renderObjects[9].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
+
+		renderObjects[12].updateMatrix(device, gameHandler->getShotMat(), imageIndex);
+	}
+
 	void drawFrame()  {
 		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 
@@ -261,11 +295,7 @@ private:
 			return;
 		}
 
-		//updateUniformBuffer(imageIndex);
-		//updateUniformBuffer2(imageIndex);
-		renderObjects[0].updateMatrix(device, glm::identity<mat4>(), imageIndex);
-		renderObjects[1].updateMatrix(device, glm::translate(mat4(1.0f), vec3(gameHandler->getOffsetX(), gameHandler->getOffsetY(), 0.0f)), imageIndex);
-
+		updateDescriptorSets(imageIndex);
 
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -310,7 +340,7 @@ private:
 
 		vkDestroySampler(device, texSampler, NULL);
 
-		for (int i = 0; i < 2; ++i) {
+		for (int i = 0; i < 5; ++i) {
 			textures[i].cleanup(device);
 		}
 
@@ -449,7 +479,7 @@ private:
 		}
 
 		VkPhysicalDeviceFeatures deviceFeatures = {};
-		deviceFeatures.samplerAnisotropy = VK_TRUE;
+		//deviceFeatures.samplerAnisotropy = VK_TRUE;
 
 		VkDeviceCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -530,6 +560,10 @@ private:
 
 		swapChainImageFormat = surfaceFormat.format;
 		swapChainExtent = extent;
+
+
+		perspective = ortho(-1.0f * (float)extent.width / (float)extent.height, 1.0f * (float)extent.width / (float)extent.height, -1.0f, 1.0f);
+		
 	}
 
 	void cleanupSwapchain() {
@@ -549,8 +583,9 @@ private:
 
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 
-		renderObjects[0].cleanupVKObjects(device, swapChainImages.size());
-		renderObjects[1].cleanupVKObjects(device, swapChainImages.size());
+		for (int i = 0; i < 13; ++i) {
+			renderObjects[i].cleanupVKObjects(device, swapChainImages.size());
+		}
 
 		vkDestroyDescriptorPool(device, descriptorPool, NULL);
 	}
@@ -562,6 +597,7 @@ private:
 			glfwGetFramebufferSize(window, &width, &height);
 			glfwWaitEvents();
 		}
+		perspective = ortho(-1.0f * (float) width / (float) height, 1.0f * (float)width / (float) height, -1.0f, 1.0f);
 
 
 		vkDeviceWaitIdle(device);
@@ -815,7 +851,7 @@ private:
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			vkBeginCommandBuffer(framebufferCommandbuffers[i], &beginInfo);
-			
+
 			VkRenderPassBeginInfo renderBeginInfo = {};
 			renderBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderBeginInfo.renderPass = renderPass;
@@ -836,11 +872,11 @@ private:
 			vkCmdBindVertexBuffers(framebufferCommandbuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(framebufferCommandbuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-			renderObjects[0].bindCmd(framebufferCommandbuffers[i], pipelineLayout, i);
-			vkCmdDrawIndexed(framebufferCommandbuffers[i], indexCount, 1, 0, 0, 0);
 
-			renderObjects[1].bindCmd(framebufferCommandbuffers[i], pipelineLayout, i);
-			vkCmdDrawIndexed(framebufferCommandbuffers[i], indexCount, 1, 0, 0, 0);
+			for (int j = 0; j < 13; ++j) {
+				renderObjects[j].bindCmd(framebufferCommandbuffers[i], pipelineLayout, i);
+				vkCmdDrawIndexed(framebufferCommandbuffers[i], indexCount, 1, 0, 0, 0);
+			}
 
 			vkCmdEndRenderPass(framebufferCommandbuffers[i]);
 
@@ -926,9 +962,12 @@ private:
 	}
 
 	void createTextures() {
-		textures = new Texture[2];
-		textures[0] = getTexture("res/asteroid01.png");
-		textures[1] = getTexture("res/ship_off.png");
+		textures = new Texture[5];
+		textures[0] = getTexture("res/ship_off.png");
+		textures[1] = getTexture("res/stars.png");
+		textures[2] = getTexture("res/ship_on.png");
+		textures[3] = getTexture("res/ship_dampened.png");
+		textures[4] = getTexture("res/shot.png");
 		createTextureSampler();
 	}
 
@@ -973,13 +1012,13 @@ private:
 	void createTextureSampler() {
 		VkSamplerCreateInfo samplerInfo = {};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.magFilter = VK_FILTER_LINEAR;
-		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.magFilter = VK_FILTER_NEAREST;
+		samplerInfo.minFilter = VK_FILTER_NEAREST;
 		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = 16;
+		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.maxAnisotropy = 1;
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 		samplerInfo.compareEnable = VK_FALSE;
@@ -993,7 +1032,7 @@ private:
 	}
 
 	void createDescriptors() {
-		createDescriptorPool(2);
+		createDescriptorPool(13);
 
 		ROCreateInfo ROInfo = {};
 		ROInfo.frameBufferCount = swapChainImages.size();
@@ -1001,14 +1040,23 @@ private:
 		ROInfo.physicalDevice = &physicalDevice;
 		ROInfo.descriptorPool = &descriptorPool;
 		ROInfo.descriptorSetLayout = &descriptorSetLayout;
-		ROInfo.texture = &textures[0];
+		ROInfo.texture = &textures[1];
 		ROInfo.imageSampler = &texSampler;
 
-		renderObjects = new RenderObject[2];
-		renderObjects[0] = RenderObject(&ROInfo);
+		renderObjects = new RenderObject[13];
 
-		ROInfo.texture = &textures[1];
-		renderObjects[1] = RenderObject(&ROInfo);
+		for (int i = 0; i < 9; ++i) {
+			renderObjects[i] = RenderObject(&ROInfo);
+		}
+		ROInfo.texture = &textures[0];
+		renderObjects[9] = RenderObject(&ROInfo);
+		ROInfo.texture = &textures[2];
+		renderObjects[10] = RenderObject(&ROInfo);
+		ROInfo.texture = &textures[3];
+		renderObjects[11] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[4];
+		renderObjects[12] = RenderObject(&ROInfo);
 	}
 
 	VkImageView createImageView(VkImage image, VkFormat format) {
@@ -1285,7 +1333,7 @@ private:
 		VkPhysicalDeviceFeatures supportedFeatures;
 		vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-		return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+		return indices.isComplete() && extensionsSupported && swapChainAdequate;
 	}
 
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
