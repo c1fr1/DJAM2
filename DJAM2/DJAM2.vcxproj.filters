@@ -37,6 +37,12 @@
     <ClCompile Include="Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AsteroidFragment.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Asteroid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameHandler.h">
@@ -52,6 +58,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AsteroidFragment.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Asteroid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -75,6 +87,57 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\stars.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\asteroid02.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fragments\0.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fragments\1.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fragments\2.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fragments\3.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fragments\4.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fragments\5.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fragments\6.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fuelbar_empty.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fuelbar_full.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\shot.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\currencybar_empty.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\currencybar_full.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\shotbar_empty.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\shotbar_full.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\danger_indicator.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\game_over.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

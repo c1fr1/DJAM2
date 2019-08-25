@@ -34,6 +34,9 @@ const int HEIGHT = 1280;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
+const int descriptorSets = 52;
+const int textureCount = 23;
+
 const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
@@ -203,6 +206,8 @@ private:
 		glfwSetWindowUserPointer(window, this);
 		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 		glfwSetKeyCallback(window, Callbacks::keyCallback);
+		glfwSetCursorPosCallback(window, Callbacks::cursorMovedCallback);
+		glfwSetMouseButtonCallback(window, Callbacks::mouseButtonCallback);
 	}
 
 	void initVulkan() {
@@ -237,11 +242,10 @@ private:
 			timeB = glfwGetTime();
 			float delta = timeB - timeA;
 
-
 			glfwPollEvents();
 			drawFrame();
-			gameHandler->main(delta);
-			GameHandler::handleBackground();
+			gameHandler->main(delta, (float) swapChainExtent.width / (float) swapChainExtent.height);
+			GameHandler::handleBackground(swapChainExtent);
 
 			float duration = timeB - glfwGetTime();
 			if (minDuration > duration) {
@@ -251,12 +255,33 @@ private:
 		vkDeviceWaitIdle(device);
 	}
 
+	void resetAllDescriptorSets(int imageIndex) {
+		for (int i = 0; i < descriptorSets; ++i) {
+			renderObjects[i].updateMatrix(device, mat4(), imageIndex);
+		}
+	}
+
 	void updateDescriptorSets(int imageIndex) {
+		resetAllDescriptorSets(imageIndex);
+		if (gameHandler->gameState == GAMESTATE_MENU) {
+			updateDescriptorSetsForMenu(imageIndex);
+		} else if (gameHandler->gameState == GAMESTATE_INGAME) {
+			updateDescriptorSetsForGame(imageIndex);
+		} else if (gameHandler->gameState == GAMESTATE_GAMEOVER) {
+			updateDescriptorSetsForGameover(imageIndex);
+		}
+	}
+
+	void updateDescriptorSetsForGameover(int imageIndex) {
+		renderObjects[50].updateMatrix(device, scale(perspective, vec3(-1.0f, 1.0f, 1.0f)), imageIndex);
+	}
+
+	void updateDescriptorSetsForGame(int imageIndex) {
 		for (int i = 0; i < 9; ++i) {
 			renderObjects[i].updateMatrix(device, gameHandler->getBackgroundOffset(i), imageIndex);
 		}
 
-		if (keyDown(GLFW_KEY_S) || keyDown(GLFW_KEY_A) || keyDown(GLFW_KEY_D)) {
+		if ((keyDown(GLFW_KEY_S) || keyDown(GLFW_KEY_A) || keyDown(GLFW_KEY_D)) && gameHandler->hasFuel()) {
 			if (keyDown(GLFW_KEY_W)) {
 				renderObjects[9].updateMatrix(device, mat4(), imageIndex);
 				renderObjects[10].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
@@ -267,13 +292,11 @@ private:
 				renderObjects[10].updateMatrix(device, mat4(), imageIndex);
 				renderObjects[11].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
 			}
-		}
-		else if (keyDown(GLFW_KEY_W)) {
+		} else if (keyDown(GLFW_KEY_W) && gameHandler->hasFuel()) {
 			renderObjects[9].updateMatrix(device, mat4(), imageIndex);
 			renderObjects[10].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
 			renderObjects[11].updateMatrix(device, mat4(), imageIndex);
-		}
-		else {
+		} else {
 			renderObjects[9].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
 			renderObjects[10].updateMatrix(device, mat4(), imageIndex);
 			renderObjects[11].updateMatrix(device, mat4(), imageIndex);
@@ -281,6 +304,34 @@ private:
 		renderObjects[9].updateMatrix(device, gameHandler->getPlayerMat(), imageIndex);
 
 		renderObjects[12].updateMatrix(device, gameHandler->getShotMat(), imageIndex);
+
+		for (int i = 0; i < 14; ++i) {
+			renderObjects[13 + i].updateMatrix(device, gameHandler->getMatforAstFrag(i), imageIndex);
+		}
+		for (int i = 0; i < 10; ++i) {
+			renderObjects[27 + i].updateMatrix(device, gameHandler->getMatforAst(i), imageIndex);
+		}
+
+		renderObjects[37].updateMatrix(device, gameHandler->getFuelbarMat(swapChainExtent), imageIndex);
+		renderObjects[38].updateMatrix(device, gameHandler->getEmptyFuelbarMat(swapChainExtent), imageIndex);
+
+		renderObjects[39].updateMatrix(device, gameHandler->getCurrencybarMat(swapChainExtent), imageIndex);
+		renderObjects[40].updateMatrix(device, gameHandler->getEmptyCurrencybarMat(swapChainExtent), imageIndex);
+
+		renderObjects[41].updateMatrix(device, gameHandler->getShotbarMat(swapChainExtent), imageIndex);
+		renderObjects[42].updateMatrix(device, gameHandler->getEmptyShotbarMat(swapChainExtent), imageIndex);
+
+		mat4* warningIndicatorMats = gameHandler->getWarningIndicatorMats();
+		for (int i = 0; i < 7; ++i) {
+			renderObjects[43 + i].updateMatrix(device, warningIndicatorMats[i], imageIndex);
+		}
+		delete[] warningIndicatorMats;
+
+		renderObjects[51].updateMatrix(device, gameHandler->getPlayerShieldMat(), imageIndex);
+	}
+
+	void updateDescriptorSetsForMenu(int imageIndex) {
+		//TODO
 	}
 
 	void drawFrame()  {
@@ -340,7 +391,7 @@ private:
 
 		vkDestroySampler(device, texSampler, NULL);
 
-		for (int i = 0; i < 5; ++i) {
+		for (int i = 0; i < textureCount; ++i) {
 			textures[i].cleanup(device);
 		}
 
@@ -583,7 +634,7 @@ private:
 
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 
-		for (int i = 0; i < 13; ++i) {
+		for (int i = 0; i < descriptorSets; ++i) {
 			renderObjects[i].cleanupVKObjects(device, swapChainImages.size());
 		}
 
@@ -859,7 +910,7 @@ private:
 			renderBeginInfo.renderArea.offset = { 0, 0 };
 			renderBeginInfo.renderArea.extent = swapChainExtent;
 
-			VkClearValue clearColor = { 0, 0, 1, 1 };
+			VkClearValue clearColor = { 0, 0, 0, 1 };
 			renderBeginInfo.clearValueCount = 1;
 			renderBeginInfo.pClearValues = &clearColor;
 
@@ -873,7 +924,7 @@ private:
 			vkCmdBindIndexBuffer(framebufferCommandbuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
 
-			for (int j = 0; j < 13; ++j) {
+			for (int j = 0; j < descriptorSets; ++j) {
 				renderObjects[j].bindCmd(framebufferCommandbuffers[i], pipelineLayout, i);
 				vkCmdDrawIndexed(framebufferCommandbuffers[i], indexCount, 1, 0, 0, 0);
 			}
@@ -962,12 +1013,30 @@ private:
 	}
 
 	void createTextures() {
-		textures = new Texture[5];
+		textures = new Texture[textureCount];
 		textures[0] = getTexture("res/ship_off.png");
 		textures[1] = getTexture("res/stars.png");
 		textures[2] = getTexture("res/ship_on.png");
 		textures[3] = getTexture("res/ship_dampened.png");
 		textures[4] = getTexture("res/shot.png");
+		textures[5] = getTexture("res/fragments/0.png");
+		textures[6] = getTexture("res/fragments/1.png");
+		textures[7] = getTexture("res/fragments/2.png");
+		textures[8] = getTexture("res/fragments/3.png");
+		textures[9] = getTexture("res/fragments/4.png");
+		textures[10] = getTexture("res/fragments/5.png");
+		textures[11] = getTexture("res/fragments/6.png");
+		textures[12] = getTexture("res/asteroid01.png");
+		textures[13] = getTexture("res/asteroid02.png");
+		textures[14] = getTexture("res/fuelbar_full.png");
+		textures[15] = getTexture("res/fuelbar_empty.png");
+		textures[16] = getTexture("res/currencybar_full.png");
+		textures[17] = getTexture("res/currencybar_empty.png");
+		textures[18] = getTexture("res/shotbar_full.png");
+		textures[19] = getTexture("res/shotbar_empty.png");
+		textures[20] = getTexture("res/danger_indicator.png");
+		textures[21] = getTexture("res/game_over.png");
+		textures[22] = getTexture("res/shield.png");
 		createTextureSampler();
 	}
 
@@ -1005,10 +1074,6 @@ private:
 		vkFreeMemory(device, stagingMemory, NULL);
 	}
 
-	/*void createTextureImageView() {
-		texImageView = createImageView(texImage, VK_FORMAT_R8G8B8A8_UNORM);
-	}*/
-
 	void createTextureSampler() {
 		VkSamplerCreateInfo samplerInfo = {};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1032,7 +1097,7 @@ private:
 	}
 
 	void createDescriptors() {
-		createDescriptorPool(13);
+		createDescriptorPool(descriptorSets);
 
 		ROCreateInfo ROInfo = {};
 		ROInfo.frameBufferCount = swapChainImages.size();
@@ -1043,7 +1108,7 @@ private:
 		ROInfo.texture = &textures[1];
 		ROInfo.imageSampler = &texSampler;
 
-		renderObjects = new RenderObject[13];
+		renderObjects = new RenderObject[descriptorSets];
 
 		for (int i = 0; i < 9; ++i) {
 			renderObjects[i] = RenderObject(&ROInfo);
@@ -1057,6 +1122,48 @@ private:
 
 		ROInfo.texture = &textures[4];
 		renderObjects[12] = RenderObject(&ROInfo);
+		
+		for (int i = 0; i < 7; ++i) {
+			ROInfo.texture = &textures[5 + i];
+			renderObjects[13 + i] = RenderObject(&ROInfo);
+		}
+		for (int i = 0; i < 7; ++i) {
+			ROInfo.texture = &textures[5 + i];
+			renderObjects[20 + i] = RenderObject(&ROInfo);
+		}
+
+		for (int i = 0; i < 10; ++i) {
+			ROInfo.texture = &textures[12 + (i % 2)];
+			renderObjects[27 + i] = RenderObject(&ROInfo);
+		}
+		ROInfo.texture = &textures[14];
+		renderObjects[37] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[15];
+		renderObjects[38] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[16];
+		renderObjects[39] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[17];
+		renderObjects[40] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[18];
+		renderObjects[41] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[19];
+		renderObjects[42] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[20];
+		for (int i = 0; i < 7; ++i) {
+			renderObjects[43 + i] = RenderObject(&ROInfo);
+		}
+
+		ROInfo.texture = &textures[21];
+		renderObjects[50] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[22];
+		renderObjects[51] = RenderObject(&ROInfo);
 	}
 
 	VkImageView createImageView(VkImage image, VkFormat format) {
@@ -1455,9 +1562,6 @@ private:
 
 int main() {
 	HelloTriangleApplication app;
-
-	keys[0] = 12;
-	std::cout << "keys[0] is " << keys[0] << std::endl;
 
 	try {
 		app.run();

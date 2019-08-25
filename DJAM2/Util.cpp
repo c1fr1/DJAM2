@@ -66,3 +66,15 @@ void Util::endSingleUseCommandBuffer(VkDevice* device, VkCommandBuffer commandBu
 
 	vkFreeCommandBuffers(*device, commandPool, 1, &commandBuffer);
 }
+
+float Util::randf() {
+	return (float)(rand()) / (float)(RAND_MAX);;
+}
+
+float Util::rmod(float a, float b) {
+	float ret = fmod(a, b);
+	if (a < 0) {
+		ret += 1;
+	}
+	return ret;
+}

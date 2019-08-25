@@ -144,6 +144,8 @@
     <None Include="shaders\vert.spv" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Asteroid.cpp" />
+    <ClCompile Include="AsteroidFragment.cpp" />
     <ClCompile Include="Callbacks.cpp" />
     <ClCompile Include="RenderObject.cpp" />
     <ClCompile Include="GameHandler.cpp" />
@@ -152,6 +154,8 @@
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Asteroid.h" />
+    <ClInclude Include="AsteroidFragment.h" />
     <ClInclude Include="Callbacks.h" />
     <ClInclude Include="RenderObject.h" />
     <ClInclude Include="GameHandler.h" />
@@ -160,9 +164,26 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\asteroid01.png" />
+    <Image Include="res\asteroid02.png" />
+    <Image Include="res\currencybar_empty.png" />
+    <Image Include="res\currencybar_full.png" />
+    <Image Include="res\danger_indicator.png" />
+    <Image Include="res\fragments\0.png" />
+    <Image Include="res\fragments\1.png" />
+    <Image Include="res\fragments\2.png" />
+    <Image Include="res\fragments\3.png" />
+    <Image Include="res\fragments\4.png" />
+    <Image Include="res\fragments\5.png" />
+    <Image Include="res\fragments\6.png" />
+    <Image Include="res\fuelbar_empty.png" />
+    <Image Include="res\fuelbar_full.png" />
+    <Image Include="res\game_over.png" />
     <Image Include="res\ship_dampened.png" />
     <Image Include="res\ship_off.png" />
     <Image Include="res\ship_on.png" />
+    <Image Include="res\shot.png" />
+    <Image Include="res\shotbar_empty.png" />
+    <Image Include="res\shotbar_full.png" />
     <Image Include="res\stars.png" />
     <Image Include="res\tex.png" />
     <Image Include="res\vspirit.jpg" />
