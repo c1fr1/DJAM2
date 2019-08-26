@@ -168,6 +168,10 @@
     <Image Include="res\currencybar_empty.png" />
     <Image Include="res\currencybar_full.png" />
     <Image Include="res\danger_indicator.png" />
+    <Image Include="res\difficulty_easy.png" />
+    <Image Include="res\difficulty_hard.png" />
+    <Image Include="res\difficulty_learn.png" />
+    <Image Include="res\difficulty_medium.png" />
     <Image Include="res\fragments\0.png" />
     <Image Include="res\fragments\1.png" />
     <Image Include="res\fragments\2.png" />
@@ -178,6 +182,10 @@
     <Image Include="res\fuelbar_empty.png" />
     <Image Include="res\fuelbar_full.png" />
     <Image Include="res\game_over.png" />
+    <Image Include="res\powerup_engine.png" />
+    <Image Include="res\powerup_shield.png" />
+    <Image Include="res\powerup_turnrate.png" />
+    <Image Include="res\shield.png" />
     <Image Include="res\ship_dampened.png" />
     <Image Include="res\ship_off.png" />
     <Image Include="res\ship_on.png" />
@@ -186,7 +194,9 @@
     <Image Include="res\shotbar_full.png" />
     <Image Include="res\stars.png" />
     <Image Include="res\tex.png" />
-    <Image Include="res\vspirit.jpg" />
+    <Image Include="res\title.png" />
+    <Image Include="res\tutorial.png" />
+    <Image Include="res\victory.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

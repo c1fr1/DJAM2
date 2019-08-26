@@ -25,7 +25,9 @@
 #include "Callbacks.h"
 #include "RenderObject.h"
 
-#define MAX_FRAMERATE 240
+#define MAX_FRAMERATE maxFramerate;
+
+float maxFramerate = 240;
 
 using namespace glm;
 
@@ -34,8 +36,8 @@ const int HEIGHT = 1280;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-const int descriptorSets = 52;
-const int textureCount = 23;
+const int descriptorSets = 62;
+const int textureCount = 33;
 
 const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
@@ -167,12 +169,6 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	/*VkImage texImage;
-	VkDeviceMemory texImageMemory;
-	VkImageView texImageView;
-	VkImage texImage2;
-	VkDeviceMemory texImageMemory2;
-	VkImageView texImageView2;*/
 	Texture* textures;
 	VkSampler texSampler;
 
@@ -194,12 +190,15 @@ private:
 	bool framebufferResized = false;
 
 	void initWindow() {
+
 		glfwInit();
 
+		const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+		maxFramerate = mode->refreshRate;
+		glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+		window = glfwCreateWindow(mode->width, mode->height, "Dastroid", glfwGetPrimaryMonitor(), NULL);
 
-		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 
 		gameHandler = new GameHandler();
 
@@ -237,7 +236,7 @@ private:
 
 		float timeA = glfwGetTime();
 		float timeB = glfwGetTime();
-		while (!glfwWindowShouldClose(window)) {
+		while (!glfwWindowShouldClose(window) && !gameHandler->shouldQuit) {
 			timeA = timeB;
 			timeB = glfwGetTime();
 			float delta = timeB - timeA;
@@ -269,11 +268,19 @@ private:
 			updateDescriptorSetsForGame(imageIndex);
 		} else if (gameHandler->gameState == GAMESTATE_GAMEOVER) {
 			updateDescriptorSetsForGameover(imageIndex);
+		} else if (gameHandler->gameState == GAMESTATE_VICTORY) {
+			updateDescriptorSetsForVictory(imageIndex);
+		} else if (gameHandler->gameState == GAMESTATE_TUTORIAL) {
+			renderObjects[61].updateMatrix(device, scale(perspective, vec3(-2.0f, 2.0f, 1.0f)), imageIndex);
 		}
 	}
 
 	void updateDescriptorSetsForGameover(int imageIndex) {
 		renderObjects[50].updateMatrix(device, scale(perspective, vec3(-1.0f, 1.0f, 1.0f)), imageIndex);
+	}
+
+	void updateDescriptorSetsForVictory(int imageIndex) {
+		renderObjects[55].updateMatrix(device, scale(perspective, vec3(-1.0f, 1.0f, 1.0f)), imageIndex);
 	}
 
 	void updateDescriptorSetsForGame(int imageIndex) {
@@ -328,10 +335,18 @@ private:
 		delete[] warningIndicatorMats;
 
 		renderObjects[51].updateMatrix(device, gameHandler->getPlayerShieldMat(), imageIndex);
+
+		renderObjects[52].updateMatrix(device, gameHandler->getPowerupEngineMat(swapChainExtent), imageIndex);
+		renderObjects[53].updateMatrix(device, gameHandler->getPowerupTurnrateMat(swapChainExtent), imageIndex);
+		renderObjects[54].updateMatrix(device, gameHandler->getPowerupShieldMat(swapChainExtent), imageIndex);
 	}
 
 	void updateDescriptorSetsForMenu(int imageIndex) {
-		//TODO
+		renderObjects[56].updateMatrix(device, gameHandler->getTitleMat(), imageIndex);
+		renderObjects[57].updateMatrix(device, gameHandler->getEasyMat(), imageIndex);
+		renderObjects[58].updateMatrix(device, gameHandler->getMediumMat(), imageIndex);
+		renderObjects[59].updateMatrix(device, gameHandler->getHardMat(), imageIndex);
+		renderObjects[60].updateMatrix(device, gameHandler->getLearnMat(), imageIndex);
 	}
 
 	void drawFrame()  {
@@ -1037,6 +1052,17 @@ private:
 		textures[20] = getTexture("res/danger_indicator.png");
 		textures[21] = getTexture("res/game_over.png");
 		textures[22] = getTexture("res/shield.png");
+		textures[23] = getTexture("res/powerup_engine.png");
+		textures[24] = getTexture("res/powerup_turnrate.png");
+		textures[25] = getTexture("res/powerup_shield.png");
+		textures[26] = getTexture("res/victory.png");
+		textures[27] = getTexture("res/title.png");
+		textures[28] = getTexture("res/difficulty_easy.png");
+		textures[29] = getTexture("res/difficulty_medium.png");
+		textures[30] = getTexture("res/difficulty_hard.png");
+		textures[31] = getTexture("res/difficulty_learn.png");
+		textures[32] = getTexture("res/tutorial.png");
+
 		createTextureSampler();
 	}
 
@@ -1164,6 +1190,36 @@ private:
 
 		ROInfo.texture = &textures[22];
 		renderObjects[51] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[23];
+		renderObjects[52] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[24];
+		renderObjects[53] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[25];
+		renderObjects[54] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[26];
+		renderObjects[55] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[27];
+		renderObjects[56] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[28];
+		renderObjects[57] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[29];
+		renderObjects[58] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[30];
+		renderObjects[59] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[31];
+		renderObjects[60] = RenderObject(&ROInfo);
+
+		ROInfo.texture = &textures[32];
+		renderObjects[61] = RenderObject(&ROInfo);
 	}
 
 	VkImageView createImageView(VkImage image, VkFormat format) {

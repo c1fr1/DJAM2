@@ -71,9 +71,6 @@
     <Image Include="res\tex.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\vspirit.jpg">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="res\asteroid01.png">
       <Filter>Resource Files</Filter>
     </Image>
@@ -138,6 +135,39 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\game_over.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\powerup_engine.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\powerup_shield.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\powerup_turnrate.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\difficulty_easy.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\difficulty_hard.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\difficulty_medium.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\title.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\victory.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\shield.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\difficulty_learn.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\tutorial.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
